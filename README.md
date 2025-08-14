@@ -1,53 +1,64 @@
-# 🚭 Tobacco Recipe Analysis Dashboard
+# 🚭 Tobacco Recipe Analysis - Interactive Heatmap Server
 
-An interactive web dashboard for analyzing tobacco recipe ingredient formulations with advanced filtering and visualization capabilities.
+A professional web-based interactive heatmap visualization tool for analyzing tobacco recipe ingredient formulations with sensory grouping and advanced visualization features.
 
 ## 📁 Files in this workspace:
-- `tobacco_dashboard.py` - Interactive dashboard application (main file)
-- `Data_Raw.xlsx` - Source data containing recipe formulations
-- `WORKING_HEATMAP.html` - Static heatmap (complete dataset)
-- `FOCUSED_HEATMAP.html` - Static heatmap (recipes with data)
+- `tobacco_heatmap_FINAL.py` - Interactive Dash server application (main file)
+- `Data_Raw.xlsx` - Source data containing recipe formulations (18 recipes × 86 ingredients)
+- `Sensory_Note.xlsx` - Ingredient sensory classification data
 - `README.md` - This documentation file
-- `.venv/` - Python virtual environment
+- `.gitignore` - Git ignore configuration
 
 ## 🚀 How to run:
 
-**Option 1 - Interactive Dashboard:**
-1. Open terminal in this folder
-2. Run: `python tobacco_dashboard.py`
-3. Open browser and go to: **http://127.0.0.1:8060**
-
-**Option 2 - Static HTML Files (Always Work):**
-- Double-click `WORKING_HEATMAP.html` for complete dataset
-- Double-click `FOCUSED_HEATMAP.html` for optimized view
+**Interactive Heatmap Server:**
+1. Install dependencies: `pip install dash pandas numpy plotly openpyxl`
+2. Open terminal in this folder
+3. Run: `python tobacco_heatmap_FINAL.py`
+4. Open browser and go to: **http://localhost:8050**
 
 ## 📊 Features:
 
-### **Interactive Controls:**
-- **Recipe Selection**: Choose individual recipes or view all 18 recipes
-- **Ingredient Selection**: Focus on specific ingredients or view all 73 filtered ingredients
-- **Multi-select**: Select multiple recipes/ingredients for comparison
-
-### **Smart Data Processing:**
-- **Min-Max Normalization**: Values automatically normalized (0-1 scale) based on your selection
-- **Intelligent Filtering**: Automatically removes 49 low-significance ingredients (used only once AND <0.03% weight)
-- **Dynamic Updates**: Visualization updates in real-time as you change selections
-
 ### **Professional Visualization:**
-- **Interactive Heatmap**: Hover for details, zoom and pan
-- **Color Coding**: Dark = ingredient not used, Bright colors = high concentration
-- **Clear Labels**: Recipe names on Y-axis, ingredient names on X-axis
+- **Interactive Heatmap**: Hover for detailed ingredient information
+- **Sensory Grouping**: Ingredients organized by taste profiles (Sweet, Dry, Rich, Light, Smooth, Harsh, Cooling)
+- **Recipe Groups**: Color-coded recipe groups (G1-G4) with red borderlines
+- **Clean Interface**: Minimal design with white cell grids and optimized layout
+- **Real-time Updates**: Auto-reload when data files are modified
+
+### **Smart Data Organization:**
+- **Sensory Classification**: 85 ingredients classified into 7 sensory categories
+- **Recipe Grouping**: 18 recipes organized into 4 distinct groups
+- **Custom Ordering**: Ingredients ordered by sensory profile, recipes by group
+- **Visual Clarity**: White cells for blank values, grid lines for clear separation
+
+### **Technical Features:**
+- **Dash Web Server**: Professional Flask-based web application
+- **Plotly Visualization**: High-quality interactive heatmaps
+- **Data Processing**: Pandas-based Excel file handling
+- **Responsive Design**: Optimized for various screen sizes
 
 ## 📈 Data Overview:
-- **Original Dataset**: 18 recipes × 122 ingredients
-- **After Filtering**: 18 recipes × 73 significant ingredients
-- **Total Data Points**: 1,314 recipe-ingredient combinations
-- **Non-zero Values**: ~369 active ingredient usages
+- **Recipe Data**: 18 tobacco formulations across 4 groups (G1-G4)
+- **Ingredient Data**: 86 ingredients with sensory classifications
+- **Sensory Groups**: Sweet (14), Light (15), Smooth (12), Rich (22), Dry (9), Harsh (10), Cooling (3)
+- **Data Source**: Excel files with comprehensive formulation details
 
 ## 🎯 Use Cases:
-1. **Recipe Comparison**: Select 2-3 recipes to see their differences
-2. **Ingredient Analysis**: Choose key ingredients to see usage patterns
-3. **Formulation Insights**: Identify ingredient clusters and recipe similarities
+1. **Formulation Analysis**: Visualize ingredient usage patterns across recipes
+2. **Sensory Profiling**: Understand taste profile distributions
+3. **Recipe Comparison**: Compare ingredient compositions between groups
+4. **Research Tool**: Interactive exploration of tobacco blend formulations
+
+## 🛠️ Dependencies:
+```bash
+pip install dash pandas numpy plotly openpyxl
+```
+
+## 📋 Requirements:
+- Python 3.7+
+- Modern web browser
+- Excel data files (Data_Raw.xlsx, Sensory_Note.xlsx)
 4. **Quality Control**: Spot unusual ingredient combinations or concentrations
 
 ## 🔧 Technical Details:
