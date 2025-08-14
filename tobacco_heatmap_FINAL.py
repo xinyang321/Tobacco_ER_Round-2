@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import dash
+from dash import dcc, html
 """
 TOBACCO HEATMAP - FINAL VERSION
 ===============================
@@ -20,8 +22,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import dash
-from dash import dcc, html
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -143,227 +143,19 @@ def order_data_by_groups(df, tobacco_groups, sensory_groups):
     
     return recipe_order, ingredient_order, grouped_recipes
 
-def create_static_heatmap(df, recipe_order, ingredient_order, save_file=True):
-    """Create a static heatmap with matplotlib/seaborn"""
-    print("\n🎨 CREATING STATIC HEATMAP")
-    print("-" * 40)
-    
-    # Reorder data
-    df_plot = df.loc[recipe_order, ingredient_order]
-    
-    # Apply threshold (show only values > 0.45)
-    df_display = df_plot.copy()
-    df_display[df_display <= 0.45] = np.nan
-    
-    # Create the plot
-    plt.figure(figsize=(20, 12))
-    
-    # Create heatmap
-    mask = df_display.isna()
-    sns.heatmap(df_display, 
-                annot=False, 
-                cmap='viridis', 
-                mask=mask,
-                cbar_kws={'label': 'Concentration'},
-                xticklabels=True, 
-                yticklabels=True)
-    
-    plt.title('🚭 Tobacco Recipes Heatmap\nRecipes by G1-G4 Groups × Ingredients by Sensory Notes', 
-              fontsize=16, fontweight='bold', pad=20)
-    plt.xlabel('🧪 Ingredients (Grouped by Sensory Notes)', fontsize=12, fontweight='bold')
-    plt.ylabel('🌿 Tobacco Recipes (Grouped by G1-G4)', fontsize=12, fontweight='bold')
-    
-    # Rotate labels for better readability
-    plt.xticks(rotation=90, fontsize=8)
-    plt.yticks(rotation=0, fontsize=10)
-    
-    plt.tight_layout()
-    
-    if save_file:
-        filename = 'tobacco_heatmap_static.png'
-        plt.savefig(filename, dpi=300, bbox_inches='tight')
-        print(f"✅ Static heatmap saved as: {filename}")
-    
-    plt.show()
-    
-    # Print statistics
-    total_values = df_display.notna().sum().sum()
-    total_possible = df_display.shape[0] * df_display.shape[1]
-    print(f"📈 Heatmap statistics:")
-    print(f"   Total data points shown: {total_values} out of {total_possible} possible")
-    print(f"   Data density: {total_values/total_possible:.1%}")
-    print(f"   Threshold: Values > 0.45 shown, others hidden")
-
-def create_interactive_heatmap(df, recipe_order, ingredient_order, grouped_recipes, tobacco_groups, save_file=True):
-    """Create an interactive heatmap with dropdown filters"""
-    print("\n🎯 CREATING INTERACTIVE HEATMAP")
-    print("-" * 40)
-    
-    # Reorder data
-    df_plot = df.loc[recipe_order, ingredient_order]
-    
-    # Apply threshold
-    df_display = df_plot.copy()
-    df_display[df_display <= 0.45] = np.nan
-    
-    # Create traces for each group
-    traces = []
-    
-    # All groups trace
-    traces.append(
-        go.Heatmap(
-            z=df_display.values,
-            x=df_display.columns,
-            y=df_display.index,
-            colorscale='viridis',
-            showscale=True,
-            hovertemplate='<b>Recipe:</b> %{y}<br><b>Ingredient:</b> %{x}<br><b>Value:</b> %{z:.3f}<extra></extra>',
-            colorbar=dict(
-                title=dict(text="Concentration"),
-                tickvals=[0.45, 0.6, 0.75, 0.9, 1.0],
-                ticktext=["0.45", "0.6", "0.75", "0.9", "1.0"]
-            ),
-            zmin=0.45,
-            zmax=1.0
-        )
-    )
-    
-    # Individual group traces
-    for group_name, group_recipes in tobacco_groups.items():
-        group_df = df_display.loc[group_recipes]
-        traces.append(
-            go.Heatmap(
-                z=group_df.values,
-                x=group_df.columns,
-                y=group_df.index,
-                colorscale='viridis',
-                showscale=True,
-                visible=False,
-                hovertemplate='<b>Recipe:</b> %{y}<br><b>Ingredient:</b> %{x}<br><b>Value:</b> %{z:.3f}<extra></extra>',
-                colorbar=dict(
-                    title=dict(text="Concentration"),
-                    tickvals=[0.45, 0.6, 0.75, 0.9, 1.0],
-                    ticktext=["0.45", "0.6", "0.75", "0.9", "1.0"]
-                ),
-                zmin=0.45,
-                zmax=1.0
-            )
-        )
-    
-    # Create figure
-    fig = go.Figure(data=traces)
-    
-    # Create dropdown buttons
-    dropdown_buttons = []
-    
-    # All groups button
-    dropdown_buttons.append(
-        dict(
-            label="📊 ALL GROUPS (18 recipes)",
-            method="update",
-            args=[
-                {"visible": [True] + [False] * len(tobacco_groups)},
-                {"title": "🚭 ALL RECIPE GROUPS - Tobacco Heatmap<br><sub>Recipes by G1-G4 Groups × Ingredients by Sensory Notes</sub>"}
-            ]
-        )
-    )
-    
-    # Individual group buttons
-    for i, (group_name, group_recipes) in enumerate(tobacco_groups.items()):
-        visible_list = [False] * (len(tobacco_groups) + 1)
-        visible_list[i + 1] = True
-        
-        dropdown_buttons.append(
-            dict(
-                label=f"🎯 {group_name.upper()} ({len(group_recipes)} recipes)",
-                method="update",
-                args=[
-                    {"visible": visible_list},
-                    {"title": f"🚭 {group_name.upper()} - Tobacco Heatmap<br><sub>Recipes by G1-G4 Groups × Ingredients by Sensory Notes</sub>"}
-                ]
-            )
-        )
-    
-    # Update layout
-    fig.update_layout(
-        title={
-            'text': "🚭 ALL RECIPE GROUPS - Tobacco Heatmap<br><sub>Recipes by G1-G4 Groups × Ingredients by Sensory Notes</sub>",
-            'x': 0.5,
-            'font': {'size': 20, 'color': 'darkblue'}
-        },
-        xaxis=dict(
-            title=dict(text="🧪 Ingredients (Grouped by Sensory Notes)", font=dict(size=14, color='darkgreen')),
-            tickangle=90,
-            tickfont=dict(size=9),
-            side="bottom"
-        ),
-        yaxis=dict(
-            title=dict(text="🌿 Tobacco Recipes (Grouped by G1-G4)", font=dict(size=14, color='darkgreen')),
-            tickfont=dict(size=10)
-        ),
-        width=1600,
-        height=900,
-        margin=dict(t=120, l=150, r=150, b=150),
-        updatemenus=[
-            dict(
-                buttons=dropdown_buttons,
-                direction="down",
-                showactive=True,
-                x=0.01,
-                xanchor="left",
-                y=0.99,
-                yanchor="top",
-                bgcolor="lightblue",
-                bordercolor="navy",
-                borderwidth=2,
-                font=dict(size=12, color="navy"),
-                pad={"r": 10, "t": 10}
-            )
-        ],
-        annotations=[
-            dict(
-                text="👆 Use the dropdown menu above to filter recipe groups",
-                showarrow=False,
-                x=0.01,
-                y=0.93,
-                xref="paper",
-                yref="paper",
-                font=dict(size=14, color="red", family="Arial Black"),
-                bgcolor="yellow",
-                bordercolor="red",
-                borderwidth=1
-            )
-        ]
-    )
-    
-    # Show statistics
-    total_values = df_display.notna().sum().sum()
-    total_possible = df_display.shape[0] * df_display.shape[1]
-    print(f"📈 Heatmap statistics:")
-    print(f"   Total data points shown: {total_values} out of {total_possible} possible")
-    print(f"   Data density: {total_values/total_possible:.1%}")
-    print(f"   Threshold: Values > 0.45 shown, others hidden")
-    
-    # Save the plot
-    if save_file:
-        filename = 'tobacco_heatmap_interactive_FINAL.html'
-        fig.write_html(filename)
-        print(f"✅ Interactive plot saved as: {filename}")
-    
-    fig.show()
-    
-    return fig
-
 def create_dash_server():
     """Create and configure the Dash server"""
     print("🚀 Starting Tobacco Heatmap Server...")
-    
+
+    # Initialize Dash app FIRST
+    app = dash.Dash(__name__)
+
     # Load data
     df, sensory_df = load_and_process_data()
     if df is None:
         print("❌ Failed to load data. Exiting.")
         return None
-    
+
     # Define groups
     tobacco_groups = define_recipe_groups()
     sensory_groups = create_sensory_groups(df, sensory_df)
@@ -375,173 +167,250 @@ def create_dash_server():
     print(f"   Recipes ordered: {len(recipe_order)}")
     print(f"   Ingredients ordered: {len(ingredient_order)}")
     
-    # Initialize Dash app
-    app = dash.Dash(__name__)
-    
-    # Define app layout
-    app.layout = html.Div([
-        dcc.Graph(
-            id='heatmap-graph',
-            style={'height': '800px'}
+    # Create heatmap figure with row/column highlighting
+    def create_heatmap_figure(selected_recipes=None):
+        if selected_recipes is None:
+            selected_recipes = []
+        
+        # Use global threshold toggle if available
+        threshold = getattr(create_heatmap_figure, "threshold", 0.4)
+        
+        filtered_recipes = recipe_order
+        heatmap_data = df[df.index.isin(filtered_recipes)]
+        heatmap_data = heatmap_data.reindex(filtered_recipes)
+        
+        # Apply threshold filtering
+        z_df = heatmap_data[ingredient_order].copy()
+        if threshold > 0:
+            z_df[z_df < threshold] = np.nan
+        z = z_df.values
+        
+        # Create masks for highlighting
+        mask = np.ones(z.shape, dtype=bool)
+        highlight_mask = np.zeros(z.shape, dtype=bool)
+        for i, y_val in enumerate(filtered_recipes):
+            if y_val in selected_recipes:
+                for j, x_val in enumerate(ingredient_order):
+                    highlight_mask[i, j] = True
+                    mask[i, j] = False
+        
+        # Create figure
+        fig = go.Figure()
+        
+        # Add faded trace
+        faded_z = np.where(mask, z, np.nan)
+        fig.add_trace(go.Heatmap(
+            z=faded_z,
+            x=ingredient_order,
+            y=filtered_recipes,
+            colorscale=[
+                [0, 'rgb(240,240,240)'],
+                [1, 'rgb(200,200,200)']
+            ],
+            showscale=False,
+            hoverinfo='skip',
+            zmin=0.01,
+            zmax=1.0,
+            name='Faded',
+            ygap=1
+        ))
+        
+        # Add highlighted trace
+        highlight_z = np.where((highlight_mask) & (~np.isnan(z)), z, np.nan)
+        fig.add_trace(go.Heatmap(
+            z=highlight_z,
+            x=ingredient_order,
+            y=filtered_recipes,
+            colorscale='viridis',
+            hovertemplate='<b>Recipe:</b> %{y}<br><b>Ingredient:</b> %{x}<br><b>Value:</b> %{z}<extra></extra>',
+            colorbar=dict(
+                title="Concentration",
+                tickvals=[0.1, 0.2, 0.4, 0.6, 0.8, 1.0],
+                ticktext=["0.1", "0.2", "0.4", "0.6", "0.8", "1.0"]
+            ),
+            zmin=0.01,
+            zmax=1.0,
+            showscale=True,
+            name='Highlight',
+            ygap=1
+        ))
+        
+        # Add colored borderlines for each sensory group
+        sensory_group_order = ['Sweet', 'Dry', 'Rich', 'Light', 'Smooth', 'Harsh', 'Cooling']
+        # Define border colors for different group pairs
+        border_colors = {
+            'Sweet': 'red', 'Dry': 'green',  # Sweet-Dry boundary will be green
+            'Rich': 'red', 'Light': 'green',  # Rich-Light boundary will be green
+            'Smooth': 'red', 'Harsh': 'green',  # Smooth-Harsh boundary will be green
+            'Cooling': 'red'
+        }
+        x_position = 0
+        for group_name in sensory_group_order:
+            group_ingredients = [ing for ing in ingredient_order if ing in sensory_groups.get(group_name, [])]
+            if group_ingredients:
+                start_x = x_position - 0.5
+                end_x = x_position + len(group_ingredients) - 0.5
+                # Use specific color for this group
+                border_color = border_colors.get(group_name, 'red')
+                # Draw rectangle with specific border color around the sensory group
+                fig.add_shape(
+                    type="rect",
+                    xref="x",
+                    yref="paper",
+                    x0=start_x,
+                    x1=end_x,
+                    y0=0,
+                    y1=1,
+                    line=dict(color=border_color, width=3),
+                    fillcolor="rgba(0,0,0,0)",
+                    layer="above"
+                )
+                # Add sensory group title annotation above the group
+                group_center = x_position + (len(group_ingredients) - 1) / 2
+                fig.add_annotation(
+                    x=group_center,
+                    y=1.02,  # Reduced spacing - closer to the heatmap
+                    xref="x",
+                    yref="paper",
+                    text=f"<b>{group_name}</b>",
+                    showarrow=False,
+                    font=dict(size=16, color="darkblue", family="Arial Black"),
+                    bgcolor="rgba(255,255,255,0.9)",
+                    bordercolor="darkblue",
+                    borderwidth=2,
+                    borderpad=4,
+                    xanchor="center",
+                    yanchor="bottom"
+                )
+                x_position += len(group_ingredients)
+        
+        # Update layout
+        fig.update_layout(
+            xaxis=dict(
+                tickfont={'size': 9},
+                tickangle=90,
+                side='bottom',
+                showgrid=True,
+                gridcolor='white',
+                gridwidth=1
+            ),
+            yaxis=dict(
+                tickfont={'size': 10},
+                showgrid=True,
+                gridcolor='white',
+                gridwidth=1
+            ),
+            margin=dict(t=80, l=150, r=150, b=150),  # Reduced top margin for less spacing
+            height=800,
+            width=1600
         )
-    ], style={'padding': '20px'})
+        
+        return fig
     
-    # Create static heatmap figure
-    def create_heatmap_figure():
-        """Create the static heatmap figure showing all recipes"""
-        try:
-            # Show all recipes
-            filtered_recipes = recipe_order
-            title_suffix = "ALL RECIPE GROUPS"
-            
-            # Filter data for all recipes
-            filtered_df = df[df.index.isin(filtered_recipes)]
-            filtered_df = filtered_df.reindex(filtered_recipes)
-            
-            # Create heatmap data
-            heatmap_data = filtered_df[ingredient_order].fillna(0)
-            
-            # Show all ingredient values (no filtering)
-            # Keep all values including zeros and low concentrations
-            # Convert zeros to NaN for white display
-            heatmap_display = heatmap_data.where(heatmap_data > 0, np.nan)
-            
-            # Create the heatmap
-            fig = go.Figure(data=go.Heatmap(
-                z=heatmap_display.values,
-                x=ingredient_order,
-                y=filtered_recipes,
-                colorscale='viridis',
-                hovertemplate='<b>Recipe:</b> %{y}<br><b>Ingredient:</b> %{x}<br><b>Value:</b> %{z}<extra></extra>',
-                colorbar=dict(
-                    title="Concentration",
-                    tickvals=[0.1, 0.2, 0.4, 0.6, 0.8, 1.0],
-                    ticktext=["0.1", "0.2", "0.4", "0.6", "0.8", "1.0"]
-                ),
-                zmin=0.01,  # Start slightly above 0 so the colorscale works properly
-                zmax=1.0,
-                showscale=True,
-                connectgaps=False  # This ensures NaN values appear as gaps (white)
-            ))
-            
-            # Add red vertical lines to separate sensory groups
-            sensory_group_order = ['Sweet', 'Dry', 'Rich', 'Light', 'Smooth', 'Harsh', 'Cooling']
-            x_position = 0
-            
-            for group_name in sensory_group_order:
-                if group_name in sensory_groups:
-                    group_ingredients = [ing for ing in ingredient_order if ing in sensory_groups[group_name]]
-                    if group_ingredients and x_position > 0:  # Don't add line before first group
-                        fig.add_vline(
-                            x=x_position - 0.5,
-                            line=dict(color="red", width=2),
-                            layer="above"
-                        )
-                    
-                    # Add sensory group title at the top of each block
-                    if group_ingredients:
-                        # Calculate the center position of the group
-                        group_center = x_position + (len(group_ingredients) - 1) / 2
-                        
-                        fig.add_annotation(
-                            x=group_center,
-                            y=len(filtered_recipes) - 0.3,  # Position above the heatmap
-                            text=f"<b>{group_name}</b>",
-                            showarrow=False,
-                            font=dict(size=12, color="darkblue"),
-                            bgcolor="white",
-                            bordercolor="darkblue",
-                            borderwidth=1,
-                            xanchor="center",
-                            yanchor="bottom"
-                        )
-                    
-                    x_position += len(group_ingredients)
-            
-            # Add red horizontal lines to separate recipe groups (G1-G4)
-            y_position = 0
-            group_mapping = {
-                'G1 - MGO and Filed': 'G1',
-                'G2': 'G2', 
-                'G3': 'G3',
-                'G4 - Unique': 'G4'
-            }
-            
-            for group_name in ['G1 - MGO and Filed', 'G2', 'G3', 'G4 - Unique']:
-                if group_name in tobacco_groups:
-                    group_recipes = [recipe for recipe in filtered_recipes if recipe in tobacco_groups[group_name]]
-                    if group_recipes and y_position > 0:  # Don't add line before first group
-                        fig.add_hline(
-                            y=y_position - 0.5,
-                            line=dict(color="red", width=2),
-                            layer="above"
-                        )
-                    
-                    # Add recipe group title on the left side of each block
-                    if group_recipes:
-                        # Calculate the center position of the group
-                        group_center = y_position + (len(group_recipes) - 1) / 2
-                        
-                        # Use simplified group name
-                        simple_name = group_mapping[group_name]
-                        
-                        fig.add_annotation(
-                            x=-2,  # Position to the left of the heatmap
-                            y=group_center,
-                            text=f"<b>{simple_name}</b>",
-                            showarrow=False,
-                            font=dict(size=12, color="darkgreen"),
-                            bgcolor="white",
-                            bordercolor="darkgreen", 
-                            borderwidth=1,
-                            xanchor="right",
-                            yanchor="middle",
-                            textangle=90  # Rotate text vertically
-                        )
-                    
-                    y_position += len(group_recipes)
-            
-            # Update layout
-            fig.update_layout(
-                xaxis=dict(
-                    tickfont={'size': 9},
-                    tickangle=90,
-                    side='bottom',
-                    showgrid=True,
-                    gridcolor='white',
-                    gridwidth=1,
-                    dtick=1,
-                    tick0=0
-                ),
-                yaxis=dict(
-                    tickfont={'size': 10},
-                    showgrid=True,
-                    gridcolor='white',
-                    gridwidth=1,
-                    dtick=1,
-                    tick0=0
-                ),
-                margin=dict(t=40, l=150, r=150, b=150),
-                height=800,
-                width=1600
+    # Helper function for button styles
+    def get_button_styles(n_clicks_list):
+        return [
+            {'margin': '2px', 'fontSize': '10px', 'display': 'block', 'width': '140px',
+             'backgroundColor': '#bdbdbd' if n_clicks % 2 == 1 else '#f5f5f5',
+             'color': 'black', 'border': '1px solid #888'}
+            for n_clicks in n_clicks_list
+        ]
+    
+    # Create button groups
+    group_headers = {
+        'G1 - MGO and Filed': 'G1',
+        'G2': 'G2',
+        'G3': 'G3',
+        'G4 - Unique': 'G4'
+    }
+    button_groups = []
+    btn_index = 0
+    for group_name in ['G1 - MGO and Filed', 'G2', 'G3', 'G4 - Unique']:
+        group_recipes = tobacco_groups.get(group_name, [])
+        if group_recipes:
+            button_groups.append(html.Div([
+                html.Div(f"{group_headers[group_name]}", style={
+                    'fontWeight': 'bold', 'fontSize': '13px', 'color': 'darkred', 'margin': '8px 0 2px 0', 'textAlign': 'right'}),
+                html.Div([
+                    html.Button(recipe, id={'type': 'recipe-btn', 'index': btn_index + i}, n_clicks=0,
+                                style={'margin': '2px', 'fontSize': '10px', 'display': 'block', 'width': '140px', 'backgroundColor': '#f5f5f5', 'color': 'black', 'border': '1px solid #888'})
+                    for i, recipe in enumerate(group_recipes)
+                ], style={'display': 'flex', 'flexDirection': 'column', 'alignItems': 'flex-end'})
+            ], style={'marginBottom': '10px'}))
+            btn_index += len(group_recipes)
+    
+    # Create initial figure
+    initial_fig = create_heatmap_figure()
+    
+    # Create app layout
+    app.layout = html.Div([
+        html.Div([
+            html.Div(button_groups, id='recipe-btn-container', style={'display': 'flex', 'flexDirection': 'column', 'alignItems': 'flex-end', 'height': '800px', 'justifyContent': 'center', 'marginRight': '0px'}),
+            html.Div([
+                html.Label("Threshold:", style={'fontSize': '12px', 'fontWeight': 'bold', 'color': 'black', 'marginBottom': '5px'}),
+                dcc.Input(
+                    id="threshold-input",
+                    type="number",
+                    value=0.4,
+                    min=0,
+                    max=1,
+                    step=0.01,
+                    style={'width': '140px', 'fontSize': '12px', 'padding': '5px', 'border': '2px solid #888'}
+                )
+            ], style={'margin': '10px 0 0 0'})
+        ], style={'position': 'absolute', 'left': '0px', 'top': '60px', 'zIndex': 2}),
+        html.Div([
+            dcc.Graph(
+                id='heatmap-graph',
+                figure=initial_fig,
+                style={'height': '800px', 'marginLeft': '150px'}
             )
-            
-            return fig
-            
-        except Exception as e:
-            print(f"❌ Error creating heatmap: {e}")
-            return go.Figure().add_annotation(
-                text=f"Error: {str(e)}",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, showarrow=False
-            )
-    
-    # Set the static figure
-    static_fig = create_heatmap_figure()
-    
-    # Update the graph component to use the static figure
-    app.layout.children[0].figure = static_fig
-    
+        ], style={'position': 'relative'})
+    ], style={'padding': '20px', 'position': 'relative', 'height': '900px'})
+
+    # Callback to update button styles
+    from dash.dependencies import Input, Output, State, ALL
+    @app.callback(
+        Output('recipe-btn-container', 'children'),
+        [Input({'type': 'recipe-btn', 'index': ALL}, 'n_clicks')]
+    )
+    def update_button_styles(n_clicks_list):
+        styles = get_button_styles(n_clicks_list)
+        button_groups = []
+        btn_index = 0
+        for group_name in ['G1 - MGO and Filed', 'G2', 'G3', 'G4 - Unique']:
+            group_recipes = tobacco_groups.get(group_name, [])
+            if group_recipes:
+                button_groups.append(html.Div([
+                    html.Div(f"{group_headers[group_name]}", style={
+                        'fontWeight': 'bold', 'fontSize': '13px', 'color': 'darkred', 'margin': '8px 0 2px 0', 'textAlign': 'right'}),
+                    html.Div([
+                        html.Button(recipe, id={'type': 'recipe-btn', 'index': btn_index + i}, n_clicks=n_clicks_list[btn_index + i],
+                                    style=styles[btn_index + i])
+                        for i, recipe in enumerate(group_recipes)
+                    ], style={'display': 'flex', 'flexDirection': 'column', 'alignItems': 'flex-end'})
+                ], style={'marginBottom': '10px'}))
+                btn_index += len(group_recipes)
+        return button_groups
+
+    # Callback for threshold input
+    @app.callback(
+        Output('heatmap-graph', 'figure'),
+        [Input('threshold-input', 'value'),
+         Input({'type': 'recipe-btn', 'index': ALL}, 'n_clicks')]
+    )
+    def update_threshold(threshold_value, recipe_n_clicks):
+        # Set the threshold based on input value
+        if threshold_value is not None and threshold_value >= 0:
+            create_heatmap_figure.threshold = threshold_value
+        else:
+            create_heatmap_figure.threshold = 0
+        
+        # Determine selected recipes
+        selected_recipes = [recipe_order[i] for i, clicks in enumerate(recipe_n_clicks) if clicks % 2 == 1]
+        fig = create_heatmap_figure(selected_recipes)
+        return fig
+
     return app
 
 def main():
