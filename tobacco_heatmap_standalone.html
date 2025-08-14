@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Tobacco Heatmap</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 5px;
+            background-color: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 10px);
+            width: calc(100vw - 10px);
+            overflow: hidden;
+        }
+        
+        .top-controls {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-shrink: 0;
+            height: 40px;
+        }
+        
+        .threshold-label {
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 5px;
+            color: #333;
+        }
+        
+        .threshold-input {
+            padding: 5px;
+            border: 2px solid #888;
+            border-radius: 3px;
+            font-size: 12px;
+            width: 100px;
+        }
+        
+        .heatmap-container {
+            flex: 1;
+            background: white;
+            padding: 8px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: row;
+            margin-bottom: 5px;
+            gap: 10px;
+            min-height: 0;
+        }
+        
+        .heatmap-wrapper {
+            flex: 1;
+            overflow: auto;
+            min-height: 0;
+            min-width: 0;
+        }
+        
+        .color-scale {
+            width: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        .color-scale-title {
+            font-size: 10px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+            color: #333;
+        }
+        
+        .color-scale-bar {
+            width: 16px;
+            height: 150px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            position: relative;
+            background: linear-gradient(to top, 
+                rgb(68, 1, 84) 0%, 
+                rgb(59, 82, 139) 25%, 
+                rgb(33, 144, 141) 50%, 
+                rgb(94, 201, 98) 75%, 
+                rgb(253, 231, 37) 100%);
+        }
+        
+        .color-scale-labels {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 150px;
+            margin-left: 5px;
+            font-size: 9px;
+            color: #666;
+        }
+        
+        .color-scale-label {
+            line-height: 1;
+        }
+        
+        .heatmap {
+            border-collapse: collapse;
+            font-size: 8px;
+            width: 100%;
+            height: fit-content;
+            table-layout: auto;
+        }
+        
+        .heatmap th,
+        .heatmap td {
+            border: 1px solid white;
+            padding: 1px;
+            text-align: center;
+            min-width: 8px;
+            max-width: 10px;
+            height: 14px;
+            font-size: 7px;
+        }
+        
+        .heatmap th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .heatmap .recipe-label {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            text-align: left;
+            padding: 2px 4px;
+            white-space: nowrap;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            max-width: 180px;
+            min-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 7px;
+            position: relative;
+        }
+        
+        .recipe-button {
+            position: absolute;
+            right: 2px;
+            top: 2px;
+            bottom: 2px;
+            width: 16px;
+            background-color: #e0e0e0;
+            border: 1px solid #888;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        
+        .recipe-button:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .recipe-button.selected {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .recipe-text {
+            padding-right: 20px;
+            display: block;
+            width: 100%;
+        }
+        
+        .sensory-group-header {
+            font-weight: bold;
+            font-size: 16px;
+            color: #000000;
+            background-color: rgba(255,255,255,0.9);
+            border: 2px solid #000080;
+            padding: 2px 4px;
+            text-align: center;
+        }
+        
+        .ingredient-header {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 7px;
+            max-width: 10px;
+            min-width: 8px;
+            height: 100px;
+            overflow: visible;
+            text-overflow: clip;
+            background-color: #f0f0f0;
+            border: 1px solid white;
+            padding: 1px;
+            white-space: nowrap;
+            vertical-align: top;
+        }
+        
+        .heatmap-cell {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .heatmap-cell:hover {
+            border: 2px solid #333;
+        }
+        
+        .sweet { border-top: 3px solid #FF0000; border-left: 2px solid #FF0000; }
+        .dry { border-top: 3px solid #00FF00; border-left: 2px solid #00FF00; }
+        .rich { border-top: 3px solid #FF0000; border-left: 2px solid #FF0000; }
+        .light { border-top: 3px solid #00FF00; border-left: 2px solid #00FF00; }
+        .smooth { border-top: 3px solid #FF0000; border-left: 2px solid #FF0000; }
+        .harsh { border-top: 3px solid #00FF00; border-left: 2px solid #00FF00; }
+        .cooling { border-top: 3px solid #FF0000; border-left: 2px solid #FF0000; }
+        .ungrouped { border-top: 3px solid #808080; border-left: 2px solid #808080; }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-controls">
+            <div class="threshold-section">
+                <div class="threshold-label">Threshold:</div>
+                <input type="number" id="threshold-input" class="threshold-input" 
+                       value="0.4" min="0" max="1" step="0.01">
+            </div>
+        </div>
+        
+        <div class="heatmap-container">
+            <div class="heatmap-wrapper">
+                <table class="heatmap" id="heatmap-table">
+                    <!-- Heatmap will be populated by JavaScript -->
+                </table>
+            </div>
+            
+            <div class="color-scale">
+                <div class="color-scale-title">Value Scale</div>
+                <div style="display: flex; align-items: flex-start;">
+                    <div class="color-scale-bar"></div>
+                    <div class="color-scale-labels">
+                        <div class="color-scale-label">1.0</div>
+                        <div class="color-scale-label">0.8</div>
+                        <div class="color-scale-label">0.6</div>
+                        <div class="color-scale-label">0.4</div>
+                        <div class="color-scale-label">0.2</div>
+                        <div class="color-scale-label">0.0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Data embedded from Python processing
+        const heatmapData = [[0.0, 0.8374733853797022, 0, 0, 0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 1.0, 0, 0, 0, 0, 0.1660883385544693, 0.5730142009987516, 0.2291254398692624, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.06944444444444445, 0.2795389048991354, 0, 0.2283464566929134, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.007656021199730444, 1.0, 0, 0, 0.01981251900749565, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2476419714600613, 0.07680828651685394, 0.3341224219415951, 0.2010742643624475, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2884078212290503, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1024305555555556, 0.4509400301907506, 0, 0.3551181102362205, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.02462999275439423, 0.156139105748758, 1.0, 0, 1.0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0.1206841938549255, 0.08899408284023666, 0.6466019417475728, 0, 0, 0, 0, 0, 0, 0.09262618880922327, 0.01028987203495631, 0.1358134702133061, 0.01214385801027557, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1340782122905028, 0, 0, 0, 0.004387755102040816, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 1.0, 0.0531082750102923, 0, 0.01574803149606299, 0.01869158878504673, 0, 0, 0, 0, 0, 0, 0, 0.1633065326633166, 0.06955665024630545, 0.02909090909090912, 0.0177319587628866, 0.0, 0.0, 0.0, 0, 0, 0, 1.0, 0, 0], [0.5085148534918246, 0.6245564229950321, 0, 0, 0.01207535018515537, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.0, 0, 0, 0, 0, 0.1692823450651322, 0.04876716604244695, 0.231647384995099, 0.1312470808033629, 0, 0, 0.1779026217228464, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1759776536312849, 0, 0, 0, 0, 0, 0, 0.249698375142978, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.06250000000000001, 0.283655825442569, 0, 0.2283464566929134, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.007656021199730444, 1.0, 0, 0, 0.01981251900749565, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 1.0, 1.0, 0, 0, 0, 0, 0, 0, 0.2476419714600613, 0.07680828651685394, 0.3341224219415951, 0.4336758524054181, 0, 0.4797297297297298, 0, 0, 0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2884078212290503, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2465277777777778, 0.4509400301907506, 0.0, 0.3551181102362205, 0.4214953271028037, 0, 1.0, 0, 0, 1.0, 1.0, 0, 0, 0.8369704433497537, 0.5818181818181819, 0, 0.4268112889637742, 1.0, 1.0, 0, 0, 1.0, 0, 0, 0], [0.3326949093285907, 0.06245564229950317, 0.0, 0.6401825537463641, 0, 0, 0.0, 0, 0, 0.0, 0, 0.0, 0, 0, 0.3110547988596769, 0, 0.0, 0, 0, 0, 0, 0, 0, 0.07665615625590892, 0.0182876872659176, 0, 0.390471742176553, 0, 0.1317567567567568, 0, 0.0, 0.0, 0.4106649325312957, 0, 0, 0, 0, 0, 0, 0, 0, 0.1270949720670391, 0, 0, 0, 0.2474489795918367, 0.0, 0.08657465495608531, 0, 1.0, 0, 0, 0, 0, 0.0, 0.0, 0, 0, 0, 0, 0.04965277777777778, 0.0, 0.1265985280047947, 1.0, 0.01588785046728972, 0.2440828402366864, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.5460095966274998, 0.03690560681334278, 0, 1.0, 0.0, 0, 1.0, 1.0, 0, 1.0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.04663249505567792, 0.0, 0.07125167499188774, 0.02195235871088276, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0, 1.0, 0, 1.0, 1.0, 0, 0.8327591397130147, 0, 1.0, 0.0, 0, 0, 1.0, 0, 0, 0, 0, 0.0, 0.02181967888019763, 0.01420156435247108, 0.8960629921259843, 0, 0, 0, 1.0, 0, 0, 0, 0.3333333333333333, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0, 0, 0, 1.0], [0.5693171396577844, 0.6387508871540102, 0.04400606980273142, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0.8446601941747571, 0, 0, 0, 0, 0, 0, 0.2310331376046144, 0.07721467956720766, 0, 1.0, 0, 0.4256756756756757, 0, 1.0, 0.2538472920982539, 1.0, 0, 0, 0.0, 0, 0, 0, 0, 0, 0.4646182495344507, 0, 0, 0, 0.6173469387755102, 0.00884973564853332, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0.1753472222222223, 0.2109235625085769, 0.3016272536222838, 0, 0.2056074766355141, 0.6301775147928993, 0.4677419354838709, 0, 0.2899955187093883, 0.4677419354838709, 0.841860465116279, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.7973257127801339, 0, 0.1704602933737987, 0.03975392022468154, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.390733463137758, 0.1381736371202663, 0.03157307167872437, 0.1826249416160673, 0, 1.0, 0.04571491517955497, 0, 1.0, 0, 0.0, 0, 0, 0, 0, 1.0, 1.0, 0, 1.0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.07316711236012177, 0, 1.0, 0.0, 0.3064516129032258, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [1.0, 0.0, 0.1299949418310571, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6032139668683661, 0.544605324614666, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4260204081632653, 0, 0, 0, 0, 1.0, 0, 1.0, 1.0, 0, 0, 0, 0, 0, 0, 0.08854166666666667, 0.670646356525319, 0.7144753016803792, 0, 0, 0.7041420118343195, 0, 0.0, 1.0, 0, 0, 0, 0.5979899497487436, 0.1871921182266009, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0], [0.8733285704875836, 0.14194464158978, 0.1957511380880122, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1884463841291094, 0.06095895755305868, 0.8470019956992428, 0.6964035497431107, 0, 0, 0, 0.885057471264368, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3715083798882682, 0, 0, 0, 0.6173469387755102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.140625, 1.0, 1.0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.5999716255997892, 0.07097232079488998, 0.06929691451694486, 0.9331304958373735, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0.9218312052320148, 0, 0, 0, 0, 0, 0, 0, 0.09262618880922327, 0.02438358302122347, 0.7209047394074101, 0.2993928070994862, 0, 0, 0, 0.2490421455938697, 0.3489197987570287, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0.1783054003724395, 0, 0, 0, 0.2448979591836735, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.09722222222222225, 0.670646356525319, 0.4164076963669801, 0, 0.1588785046728972, 0, 0, 0, 0, 0, 0, 0, 0.1206030150753769, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.5946514255602676, 0.07097232079488998, 0.3727870510875063, 0.4784178675315123, 0, 0, 0, 0, 0.0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.09262618880922327, 0.02438358302122347, 0.7209047394074101, 0.7197571228397945, 0, 0, 0, 0.1954022988505748, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1620111731843575, 0, 0, 0, 0.2091836734693878, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.09722222222222225, 0.670646356525319, 0.4164076963669801, 0, 0.1588785046728972, 0, 0, 0, 0, 0, 0, 0.0, 0.1206030150753769, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.108233136232589, 0, 0, 0.6389046775218162, 0.05903504534964846, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4120268398755105, 0.1706850811485643, 0.7209047394074101, 0.6496964035497431, 0, 0.0, 0.02368363075567305, 0, 0, 0, 1.0, 0, 0, 0, 0.0, 0, 0, 0, 0.7206703910614525, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.84251968503937, 0.01869158878504673, 0, 0, 0, 0, 0, 0, 0, 0.0, 1.0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0.9619985711462751, 0, 0.007081436519979772, 0.7178106924337158, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2927839301440965, 0.1790161386808157, 1.0, 0.8482017748715553, 0, 0.02306306306306306, 0.0, 0, 0, 0, 0.955, 0, 0, 0, 1.0, 0, 0, 0, 0.5996275605214153, 0, 0, 0, 0.4706632653061225, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2007874015748032, 0.7420560747663552, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0.02491435689816256, 0, 0, 0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.9794072513524761, 0.0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0.0, 1.0, 0.0, 0, 0, 0, 0, 0, 1.0, 1.0, 0, 0, 0, 0, 0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 1.0, 1.0, 0, 0.6527777777777779, 0, 0.01363051495583184, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 1.0, 0], [0.0008664325778649284, 0.07608232789212209, 0.8786039453717754, 0, 0.8551136871858172, 0, 0, 0.0, 0, 0, 0.0, 0, 0, 0, 0.06556857776369973, 0.0, 0.4757281553398059, 0, 0, 0, 0, 0, 0, 0.07559148741902129, 0.004876716604244698, 0.1104258892798838, 0.0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0.1028864059590316, 0, 0, 0, 0.0, 0.1613214889562814, 0.0, 0, 0, 0.0, 0.0, 0, 0.0, 0, 0, 0.0, 0, 0, 1.0, 0.861111111111111, 0.02566213805406889, 0.002167779044787263, 0.0, 0.0, 0, 0, 0, 0, 0, 0, 1.0, 0.1390284757118928, 0.0, 0.0, 0.0, 1.0, 0.01844532279314893, 0.01844532279314893, 1.0, 0.0, 0, 0.7832701906308257, 0, 0], [0.4427673147177, 0, 0.02276176024279211, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, 0.382477035159962, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 1.0, 0.1762210837975113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0.05032402234636871, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.05208333333333334, 0, 0.2498527023022929, 0, 0, 0.4971834319526627, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]];
+        const recipeOrder = ["J1 Virginia Tobacco 5%", "TOBACCO (VIRGINIA) 5% (+38% FL) E-400360", "VIRGINIA TOBACCO 5% (DDS00451B)", "(ILLINOIS) TOBACCO VT 5% NFC) DDS00734", "TOBACCO(GOLDEN) 5% ( +38% FL) (E-400361)", "RUBY TOBACCO (S2) 3% (40%VG) (E-400518)", "PURPLE TOBACCO3% (E-400514)", "TOBACCO(AMERICAN) 5% (E-400469)", "(OREGON) AMERICAN TOBACCO 5% (CHINA WL) DDS00737", "AUTUMN TOBACCO 3% (E-400519)", "TOBACCO (BLONDE) 5% +25% FL (PAB00426B)", "SRI LANKA  TOBACCO 5% (E-400451)", "VERMONT TOBACCO  5% (E-400454)", "(COLORADO) VIRGINIA TOBACCO 5% (DDS00735)", "(ARIZONA) BLONDE TOBACCO5% (CHINA WL) DDS00736", "Classic Tobacco 5% (345-00006)", "CALIFORNIA TOBACCO 5% (E-400452)", "Golden Tobacco 5% J1 (345-00124)"];
+        const ingredientOrder = ["ETHYL MALTOL", "VERATRYL ALDEHYDE", "SOTOLONE", "VANILLIN", "ETHYL PROPIONATE FCC", "CYCLOTENE", "ETHYL ISOVALERATE", "ETHYL BUTYRATE FCC", "ETHYL VANILLIN", "RASPBERRY KETONE", "COFFEE FURANONE", "ETHYL 2 METHYL BUTYRATE FCC", "MAPLE FURANONE", "HELIOTROPIN", "GUAIACOL", "ISOVALERIC ACID", "TABANON", "TOBACCO ABS", "OAK EXTRACT 16X", "PHENYL ACETIC ACID", "PATCHOULI OIL", "OLIBANUM OIL", "CLARY SAGE OIL", "2-ACETYL PYRAZINE", "2-ACETYL PYRIDINE", "DAMASCENONE BETA", "METHYL CYCLOPENTENOLON NAT", "2:3:5 TRIMETHYL PYRAZINE", "KETOISOPHORONE PURE", "COCOA EXTRACT", "2,3,5,6-TETRAMETHYL PYRAZINE", "2,5-DIMETHYL PYRAZINE", "PROPENYL GUAETHOL", "2,3-DIMETHYL PYRAZINE", "METHYL CINNAMATE NAT", "DAMASCONE BETA", "TETRAMETHYL PYRAZINE", "ESPRESSO EXTRACT", "2-ACETYL PYRROLE", "2-ACETYL THIAZOLE", "2-METHYL PYRAZINE", "2,3,5-TRIMETHYL PYRAZINE", "ETHYL 2-3, 5 DIMETHYL PYRAZINE", "COFFEE EXTRACT ESPRESSO", "CIS-JASMONE", "PHENYL ETHYL ALCOHOL", "LINALOOL SYNTH", "BETA IONONE", "ETHYL ALCOHOL", "TERPINEOL ALPHA NAT", "BUTYL ACETATE FCC", "CIS-3-HEXENYL ACETATE FCC", "CIS-3-HEXENOL FCC", "ALCOHOL C-6 FCC", "GERANYL BUTYRATE", "IONONE ALPHA NAT", "ISOPROPYL ALCOHOL", "BERGAMOT OIL", "GERANYL ACETATE", "BENZYL ACETATE FCC", "CETALOX", "ETHYL LACTATE NAT", "BENZYL ALCOHOL FCC", "LACTIC ACID FCC", "GAMMA VALEROLACTONE", "GAMMA HEXALACTONE", "GAMMA HEPTALACTONE", "BENZYL BENZOATE", "GAMMA UNDECALACTONE  NAT", "GAMMA DECALACTONE", "OMEGA-PENTADECALACTONE", "DELTA DECALACTONE", "ACETIC ACID GLACIAL", "2-METHYL BUTYRIC ACID NAT", "BUTYRIC ACID FCC", "ISOVALERALDEHYDE NAT", "ISOBUTYRIC ACID", "CAPROIC ACID NAT", "CAPRYLIC ACID NAT", "NONANAL SYNTH", "ALDEHYDE C-6 FCC", "VALSPICE (CREOSOL)", "MENTHOL ", "CORNMINT OIL, REDISTILLED", "WS-5"];
+        const groupedRecipes = {"G1 - MGO and Filed": ["J1 Virginia Tobacco 5%", "TOBACCO (VIRGINIA) 5% (+38% FL) E-400360", "VIRGINIA TOBACCO 5% (DDS00451B)", "(ILLINOIS) TOBACCO VT 5% NFC) DDS00734", "TOBACCO(GOLDEN) 5% ( +38% FL) (E-400361)"], "G2": ["RUBY TOBACCO (S2) 3% (40%VG) (E-400518)", "PURPLE TOBACCO3% (E-400514)", "TOBACCO(AMERICAN) 5% (E-400469)", "(OREGON) AMERICAN TOBACCO 5% (CHINA WL) DDS00737"], "G3": ["AUTUMN TOBACCO 3% (E-400519)", "TOBACCO (BLONDE) 5% +25% FL (PAB00426B)", "SRI LANKA  TOBACCO 5% (E-400451)", "VERMONT TOBACCO  5% (E-400454)", "(COLORADO) VIRGINIA TOBACCO 5% (DDS00735)", "(ARIZONA) BLONDE TOBACCO5% (CHINA WL) DDS00736"], "G4 - Unique": ["Classic Tobacco 5% (345-00006)", "CALIFORNIA TOBACCO 5% (E-400452)", "Golden Tobacco 5% J1 (345-00124)"]};
+        const groupedIngredients = {"Sweet": ["ETHYL MALTOL", "VERATRYL ALDEHYDE", "SOTOLONE", "VANILLIN", "ETHYL PROPIONATE FCC", "CYCLOTENE", "ETHYL ISOVALERATE", "ETHYL BUTYRATE FCC", "ETHYL VANILLIN", "RASPBERRY KETONE", "COFFEE FURANONE", "ETHYL 2 METHYL BUTYRATE FCC", "MAPLE FURANONE", "HELIOTROPIN"], "Dry": ["GUAIACOL", "ISOVALERIC ACID", "TABANON", "TOBACCO ABS", "OAK EXTRACT 16X", "PHENYL ACETIC ACID", "PATCHOULI OIL", "OLIBANUM OIL", "CLARY SAGE OIL"], "Rich": ["2-ACETYL PYRAZINE", "2-ACETYL PYRIDINE", "DAMASCENONE BETA", "METHYL CYCLOPENTENOLON NAT", "2:3:5 TRIMETHYL PYRAZINE", "KETOISOPHORONE PURE", "COCOA EXTRACT", "2,3,5,6-TETRAMETHYL PYRAZINE", "2,5-DIMETHYL PYRAZINE", "PROPENYL GUAETHOL", "2,3-DIMETHYL PYRAZINE", "METHYL CINNAMATE NAT", "DAMASCONE BETA", "TETRAMETHYL PYRAZINE", "ESPRESSO EXTRACT", "2-ACETYL PYRROLE", "2-ACETYL THIAZOLE", "2-METHYL PYRAZINE", "2,3,5-TRIMETHYL PYRAZINE", "ETHYL 2-3, 5 DIMETHYL PYRAZINE", "COFFEE EXTRACT ESPRESSO", "CIS-JASMONE"], "Light": ["PHENYL ETHYL ALCOHOL", "LINALOOL SYNTH", "BETA IONONE", "ETHYL ALCOHOL", "TERPINEOL ALPHA NAT", "BUTYL ACETATE FCC", "CIS-3-HEXENYL ACETATE FCC", "CIS-3-HEXENOL FCC", "ALCOHOL C-6 FCC", "GERANYL BUTYRATE", "IONONE ALPHA NAT", "ISOPROPYL ALCOHOL", "BERGAMOT OIL", "GERANYL ACETATE", "BENZYL ACETATE FCC"], "Smooth": ["CETALOX", "ETHYL LACTATE NAT", "BENZYL ALCOHOL FCC", "LACTIC ACID FCC", "GAMMA VALEROLACTONE", "GAMMA HEXALACTONE", "GAMMA HEPTALACTONE", "BENZYL BENZOATE", "GAMMA UNDECALACTONE  NAT", "GAMMA DECALACTONE", "OMEGA-PENTADECALACTONE", "DELTA DECALACTONE"], "Harsh": ["ACETIC ACID GLACIAL", "2-METHYL BUTYRIC ACID NAT", "BUTYRIC ACID FCC", "ISOVALERALDEHYDE NAT", "ISOBUTYRIC ACID", "CAPROIC ACID NAT", "CAPRYLIC ACID NAT", "NONANAL SYNTH", "ALDEHYDE C-6 FCC", "VALSPICE (CREOSOL)"], "Cooling": ["MENTHOL ", "CORNMINT OIL, REDISTILLED", "WS-5"], "Ungrouped": []};
+        const groupHeaders = {"G1 - MGO and Filed": "G1", "G2": "G2", "G3": "G3", "G4 - Unique": "G4"};
+        
+        let selectedRecipes = new Set();
+        let currentThreshold = 0.4;
+        
+        // Color scale function (viridis-like)
+        function getColor(value, opacity = 1) {
+            if (value <= 0 || isNaN(value)) return `rgba(240, 240, 240, ${opacity})`;
+            
+            // Viridis color scale approximation
+            const colors = [
+                [68, 1, 84],      // Dark purple
+                [59, 82, 139],    // Blue-purple  
+                [33, 144, 141],   // Teal
+                [94, 201, 98],    // Green
+                [253, 231, 37]    // Yellow
+            ];
+            
+            const scaledValue = Math.min(Math.max(value, 0), 1);
+            const index = scaledValue * (colors.length - 1);
+            const lowerIndex = Math.floor(index);
+            const upperIndex = Math.ceil(index);
+            const fraction = index - lowerIndex;
+            
+            if (lowerIndex === upperIndex) {
+                const [r, g, b] = colors[lowerIndex];
+                return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+            }
+            
+            const [r1, g1, b1] = colors[lowerIndex];
+            const [r2, g2, b2] = colors[upperIndex];
+            
+            const r = Math.round(r1 + (r2 - r1) * fraction);
+            const g = Math.round(g1 + (g2 - g1) * fraction);
+            const b = Math.round(b1 + (b2 - b1) * fraction);
+            
+            return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        }
+        
+        // Helper functions for sensory group borders
+        function getIngredientGroup(ingredient) {
+            for (const [groupName, ingredients] of Object.entries(groupedIngredients)) {
+                if (ingredients.includes(ingredient)) {
+                    return groupName;
+                }
+            }
+            return 'Ungrouped';
+        }
+        
+        function isFirstInGroup(ingredient, colIndex) {
+            if (colIndex === 0) return true;
+            const currentGroup = getIngredientGroup(ingredient);
+            const prevIngredient = ingredientOrder[colIndex - 1];
+            const prevGroup = getIngredientGroup(prevIngredient);
+            return currentGroup !== prevGroup;
+        }
+        
+        function getGroupColor(groupName) {
+            const colors = {
+                'Sweet': '#FF0000',
+                'Dry': '#00FF00', 
+                'Rich': '#FF0000',
+                'Light': '#00FF00',
+                'Smooth': '#FF0000',
+                'Harsh': '#00FF00',
+                'Cooling': '#FF0000',
+                'Ungrouped': '#808080'
+            };
+            return colors[groupName] || '#808080';
+        }
+        
+        function getRecipeGroup(recipe) {
+            for (const [groupName, recipes] of Object.entries(groupedRecipes)) {
+                if (recipes.includes(recipe)) {
+                    return groupHeaders[groupName] || groupName;
+                }
+            }
+            return '';
+        }
+        
+        function getDisplayRecipeName(recipe) {
+            const groupPrefix = getRecipeGroup(recipe);
+            return groupPrefix ? `${groupPrefix}-${recipe}` : recipe;
+        }
+        
+        function toggleRecipe(recipe, button) {
+            if (selectedRecipes.has(recipe)) {
+                selectedRecipes.delete(recipe);
+                button.classList.remove('selected');
+            } else {
+                selectedRecipes.add(recipe);
+                button.classList.add('selected');
+            }
+            updateHeatmap();
+        }
+        
+        function createHeatmap() {
+            const table = document.getElementById('heatmap-table');
+            table.innerHTML = '';
+            
+            // Create sensory header row
+            const sensoryHeaderRow = document.createElement('tr');
+            
+            // Empty cell for recipe column
+            const emptyHeader = document.createElement('td');
+            emptyHeader.className = 'recipe-label';
+            emptyHeader.textContent = '';
+            sensoryHeaderRow.appendChild(emptyHeader);
+            
+            // Add sensory group headers
+            Object.entries(groupedIngredients).forEach(([groupName, ingredients]) => {
+                if (ingredients.length === 0) return;
+                
+                const groupHeader = document.createElement('td');
+                groupHeader.className = `sensory-group-header ${groupName.toLowerCase()}`;
+                groupHeader.colSpan = ingredients.length;
+                groupHeader.textContent = groupName;
+                groupHeader.style.textAlign = 'center';
+                groupHeader.style.fontWeight = 'bold';
+                groupHeader.style.fontSize = '16px';
+                groupHeader.style.color = 'black';
+                groupHeader.style.borderBottom = '2px solid #ddd';
+                sensoryHeaderRow.appendChild(groupHeader);
+            });
+            table.appendChild(sensoryHeaderRow);
+            
+            // Create data rows
+            recipeOrder.forEach((recipe, rowIndex) => {
+                const row = document.createElement('tr');
+                
+                // Recipe label with button
+                const labelCell = document.createElement('td');
+                labelCell.className = 'recipe-label';
+                labelCell.title = getDisplayRecipeName(recipe);
+                
+                // Create recipe text span
+                const recipeText = document.createElement('span');
+                recipeText.className = 'recipe-text';
+                recipeText.textContent = getDisplayRecipeName(recipe);
+                
+                // Create recipe button
+                const recipeButton = document.createElement('button');
+                recipeButton.className = 'recipe-button';
+                recipeButton.textContent = '●';
+                recipeButton.title = `Click to select/deselect ${getDisplayRecipeName(recipe)}`;
+                recipeButton.onclick = () => toggleRecipe(recipe, recipeButton);
+                
+                labelCell.appendChild(recipeText);
+                labelCell.appendChild(recipeButton);
+                row.appendChild(labelCell);
+                
+                // Data cells
+                ingredientOrder.forEach((ingredient, colIndex) => {
+                    const cell = document.createElement('td');
+                    cell.className = 'heatmap-cell';
+                    cell.dataset.recipe = recipe;
+                    cell.dataset.ingredient = ingredient;
+                    cell.dataset.value = heatmapData[rowIndex][colIndex];
+                    
+                    // Add sensory group border styling
+                    const ingredientGroup = getIngredientGroup(ingredient);
+                    if (ingredientGroup) {
+                        cell.classList.add(ingredientGroup.toLowerCase());
+                    }
+                    
+                    // Add left border for first ingredient in each group
+                    if (isFirstInGroup(ingredient, colIndex)) {
+                        cell.style.borderLeft = `3px solid ${getGroupColor(ingredientGroup)}`;
+                    }
+                    
+                    // Add tooltip functionality
+                    cell.addEventListener('mouseenter', showTooltip);
+                    cell.addEventListener('mouseleave', hideTooltip);
+                    cell.addEventListener('mousemove', moveTooltip);
+                    
+                    row.appendChild(cell);
+                });
+                
+                table.appendChild(row);
+            });
+            
+            // Create ingredient names row at the bottom
+            const ingredientRow = document.createElement('tr');
+            
+            // Empty cell for recipe column
+            const emptyFooter = document.createElement('td');
+            emptyFooter.className = 'recipe-label';
+            emptyFooter.textContent = '';
+            ingredientRow.appendChild(emptyFooter);
+            
+            // Add ingredient names
+            ingredientOrder.forEach(ingredient => {
+                const ingredientCell = document.createElement('td');
+                ingredientCell.className = 'ingredient-header';
+                ingredientCell.textContent = ingredient;
+                ingredientCell.title = ingredient;
+                ingredientCell.style.fontSize = '10px';
+                ingredientCell.style.textAlign = 'center';
+                ingredientCell.style.writingMode = 'vertical-rl';
+                ingredientCell.style.textOrientation = 'mixed';
+                ingredientCell.style.padding = '4px 2px';
+                ingredientRow.appendChild(ingredientCell);
+            });
+            
+            table.appendChild(ingredientRow);
+        }
+        
+        function updateHeatmap() {
+            const cells = document.querySelectorAll('.heatmap-cell');
+            
+            cells.forEach(cell => {
+                const recipe = cell.dataset.recipe;
+                const value = parseFloat(cell.dataset.value);
+                const isSelected = selectedRecipes.has(recipe);
+                const isAboveThreshold = value >= currentThreshold;
+                
+                if (isAboveThreshold) {
+                    if (selectedRecipes.size > 0 && isSelected) {
+                        // Show in full color only if selected
+                        cell.style.backgroundColor = getColor(value, 1);
+                        cell.textContent = '';
+                    } else {
+                        // Show gray for deactivated rows
+                        cell.style.backgroundColor = '#d3d3d3';
+                        cell.textContent = '';
+                    }
+                } else {
+                    // Below threshold - light gray
+                    cell.style.backgroundColor = '#f0f0f0';
+                    cell.textContent = '';
+                }
+            });
+        }
+        
+        function showTooltip(event) {
+            const tooltip = document.getElementById('tooltip');
+            const recipe = event.target.dataset.recipe;
+            const ingredient = event.target.dataset.ingredient;
+            const value = event.target.dataset.value;
+            
+            tooltip.innerHTML = `
+                <strong>Recipe:</strong> ${recipe}<br>
+                <strong>Ingredient:</strong> ${ingredient}<br>
+                <strong>Value:</strong> ${value}
+            `;
+            tooltip.style.display = 'block';
+        }
+        
+        function hideTooltip() {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = 'none';
+        }
+        
+        function moveTooltip(event) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.left = event.pageX + 10 + 'px';
+            tooltip.style.top = event.pageY + 10 + 'px';
+        }
+        
+        // Threshold input handler
+        document.getElementById('threshold-input').addEventListener('input', function(event) {
+            currentThreshold = parseFloat(event.target.value) || 0;
+            updateHeatmap();
+        });
+        
+        // Initialize the heatmap
+        function initialize() {
+            createHeatmap();
+            updateHeatmap();
+            
+            console.log('Interactive Tobacco Heatmap loaded successfully!');
+            console.log(`Recipes: ${recipeOrder.length}, Ingredients: ${ingredientOrder.length}`);
+        }
+        
+        // Start the application
+        initialize();
+    </script>
+</body>
+</html>
