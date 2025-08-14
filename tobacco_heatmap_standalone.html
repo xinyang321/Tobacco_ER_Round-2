@@ -69,6 +69,7 @@
             overflow: auto;
             min-height: 0;
             min-width: 0;
+            position: relative;
         }
         
         .color-scale {
@@ -150,18 +151,20 @@
             white-space: nowrap;
             position: sticky;
             left: 0;
-            z-index: 5;
-            max-width: 180px;
-            min-width: 140px;
+            z-index: 15;
+            max-width: 200px;
+            min-width: 180px;
+            width: 200px;
             overflow: hidden;
             text-overflow: ellipsis;
             font-size: 7px;
-            position: relative;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            border-right: 2px solid #ccc;
         }
         
         .recipe-button {
             position: absolute;
-            right: 2px;
+            right: 4px;
             top: 2px;
             bottom: 2px;
             width: 16px;
@@ -174,6 +177,7 @@
             align-items: center;
             justify-content: center;
             transition: background-color 0.2s;
+            z-index: 16;
         }
         
         .recipe-button:hover {
@@ -186,9 +190,11 @@
         }
         
         .recipe-text {
-            padding-right: 20px;
+            padding-right: 24px;
             display: block;
             width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .sensory-group-header {
@@ -398,6 +404,12 @@
             const emptyHeader = document.createElement('td');
             emptyHeader.className = 'recipe-label';
             emptyHeader.textContent = '';
+            emptyHeader.style.position = 'sticky';
+            emptyHeader.style.left = '0';
+            emptyHeader.style.zIndex = '20';
+            emptyHeader.style.backgroundColor = '#f0f0f0';
+            emptyHeader.style.boxShadow = '2px 0 5px rgba(0,0,0,0.1)';
+            emptyHeader.style.borderRight = '2px solid #ccc';
             sensoryHeaderRow.appendChild(emptyHeader);
             
             // Add sensory group headers
@@ -479,6 +491,12 @@
             const emptyFooter = document.createElement('td');
             emptyFooter.className = 'recipe-label';
             emptyFooter.textContent = '';
+            emptyFooter.style.position = 'sticky';
+            emptyFooter.style.left = '0';
+            emptyFooter.style.zIndex = '20';
+            emptyFooter.style.backgroundColor = '#f0f0f0';
+            emptyFooter.style.boxShadow = '2px 0 5px rgba(0,0,0,0.1)';
+            emptyFooter.style.borderRight = '2px solid #ccc';
             ingredientRow.appendChild(emptyFooter);
             
             // Add ingredient names

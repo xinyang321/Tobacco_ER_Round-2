@@ -3,19 +3,9 @@
 STANDALONE TOBACCO HEATMAP GENERATOR
 ====================================
 This script generates a standalone HTML file with embedded JavaScript
-for interactive tobacco heatmap visualization        .bottom-controls {{
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-top: 1px solid #ddd;
-        }}
-        
-        #recipe-groups {{
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            flex-wrap: wrap;
-        }}bacco_heatmap_standalone.html
+for interactive tobacco heatmap visualization.
+
+Output: tobacco_heatmap_standalone.html
 
 Usage: python generate_standalone_heatmap.py
 """
@@ -259,6 +249,7 @@ def generate_html_file(df, recipe_order, ingredient_order, recipe_groups, ingred
             overflow: auto;
             min-height: 0;
             min-width: 0;
+            position: relative;
         }}
         
         .color-scale {{
@@ -340,18 +331,20 @@ def generate_html_file(df, recipe_order, ingredient_order, recipe_groups, ingred
             white-space: nowrap;
             position: sticky;
             left: 0;
-            z-index: 5;
-            max-width: 180px;
-            min-width: 140px;
+            z-index: 15;
+            max-width: 200px;
+            min-width: 180px;
+            width: 200px;
             overflow: hidden;
             text-overflow: ellipsis;
             font-size: 7px;
-            position: relative;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            border-right: 2px solid #ccc;
         }}
         
         .recipe-button {{
             position: absolute;
-            right: 2px;
+            right: 4px;
             top: 2px;
             bottom: 2px;
             width: 16px;
@@ -364,6 +357,7 @@ def generate_html_file(df, recipe_order, ingredient_order, recipe_groups, ingred
             align-items: center;
             justify-content: center;
             transition: background-color 0.2s;
+            z-index: 16;
         }}
         
         .recipe-button:hover {{
@@ -376,9 +370,11 @@ def generate_html_file(df, recipe_order, ingredient_order, recipe_groups, ingred
         }}
         
         .recipe-text {{
-            padding-right: 20px;
+            padding-right: 24px;
             display: block;
             width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }}
         
         .sensory-group-header {{
@@ -588,6 +584,12 @@ def generate_html_file(df, recipe_order, ingredient_order, recipe_groups, ingred
             const emptyHeader = document.createElement('td');
             emptyHeader.className = 'recipe-label';
             emptyHeader.textContent = '';
+            emptyHeader.style.position = 'sticky';
+            emptyHeader.style.left = '0';
+            emptyHeader.style.zIndex = '20';
+            emptyHeader.style.backgroundColor = '#f0f0f0';
+            emptyHeader.style.boxShadow = '2px 0 5px rgba(0,0,0,0.1)';
+            emptyHeader.style.borderRight = '2px solid #ccc';
             sensoryHeaderRow.appendChild(emptyHeader);
             
             // Add sensory group headers
@@ -669,6 +671,12 @@ def generate_html_file(df, recipe_order, ingredient_order, recipe_groups, ingred
             const emptyFooter = document.createElement('td');
             emptyFooter.className = 'recipe-label';
             emptyFooter.textContent = '';
+            emptyFooter.style.position = 'sticky';
+            emptyFooter.style.left = '0';
+            emptyFooter.style.zIndex = '20';
+            emptyFooter.style.backgroundColor = '#f0f0f0';
+            emptyFooter.style.boxShadow = '2px 0 5px rgba(0,0,0,0.1)';
+            emptyFooter.style.borderRight = '2px solid #ccc';
             ingredientRow.appendChild(emptyFooter);
             
             // Add ingredient names
