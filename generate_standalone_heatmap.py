@@ -706,13 +706,17 @@ def generate_html_file(df, recipe_order, ingredient_order, recipe_groups, ingred
                 const isAboveThreshold = value >= currentThreshold;
                 
                 if (isAboveThreshold) {{
-                    if (selectedRecipes.size > 0 && isSelected) {{
-                        // Show in full color only if selected
+                    if (selectedRecipes.size === 0) {{
+                        // No recipes selected - show all in full color
+                        cell.style.backgroundColor = getColor(value, 1);
+                        cell.textContent = '';
+                    }} else if (isSelected) {{
+                        // Recipe is selected - show in full color
                         cell.style.backgroundColor = getColor(value, 1);
                         cell.textContent = '';
                     }} else {{
-                        // Show gray for deactivated rows
-                        cell.style.backgroundColor = '#d3d3d3';
+                        // Recipe not selected - show with reduced transparency
+                        cell.style.backgroundColor = getColor(value, 0.2);
                         cell.textContent = '';
                     }}
                 }} else {{
