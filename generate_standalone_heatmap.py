@@ -42,33 +42,23 @@ def load_and_process_data():
     return df, sensory_df
 
 def define_recipe_groups():
-    """Define the G1-G4 recipe groups"""
+    """Define the selected recipe groups"""
     tobacco_groups = {
-        'G1 - MGO and Filed': [
+        'Virginia Group': [
             'J1 Virginia Tobacco 5%',
             'TOBACCO (VIRGINIA) 5% (+38% FL) E-400360',
-            'VIRGINIA TOBACCO 5% (DDS00451B)',
             '(ILLINOIS) TOBACCO VT 5% NFC) DDS00734',
-            'TOBACCO(GOLDEN) 5% ( +38% FL) (E-400361)'
+            'VIRGINIA TOBACCO 5% (DDS00451B)'
         ],
-        'G2': [
-            'RUBY TOBACCO (S2) 3% (40%VG) (E-400518)',
-            'PURPLE TOBACCO3% (E-400514)',
-            'TOBACCO(AMERICAN) 5% (E-400469)',
-            '(OREGON) AMERICAN TOBACCO 5% (CHINA WL) DDS00737'
-        ],
-        'G3': [
+        'Specialty Group': [
+            'Golden Tobacco 5% J1 (345-00124)',
             'AUTUMN TOBACCO 3% (E-400519)',
-            'TOBACCO (BLONDE) 5% +25% FL (PAB00426B)',
             'SRI LANKA  TOBACCO 5% (E-400451)',
-            'VERMONT TOBACCO  5% (E-400454)',
-            '(COLORADO) VIRGINIA TOBACCO 5% (DDS00735)',
-            '(ARIZONA) BLONDE TOBACCO5% (CHINA WL) DDS00736'
+            'VERMONT TOBACCO  5% (E-400454)'
         ],
-        'G4 - Unique': [
-            'Classic Tobacco 5% (345-00006)',
-            'CALIFORNIA TOBACCO 5% (E-400452)',
-            'Golden Tobacco 5% J1 (345-00124)'
+        'American Group': [
+            'TOBACCO(AMERICAN) 5% (E-400469)',
+            'CALIFORNIA TOBACCO 5% (E-400452)'
         ]
     }
     return tobacco_groups
@@ -125,20 +115,32 @@ def organize_data(df, tobacco_groups, sensory_groups):
                 recipe_order.append(recipe)
                 recipe_groups[recipe] = group_name
     
-    # Order ingredients by sensory groups
+    # Filter ingredients to only include those used in selected recipes
+    # Create subset of data with only selected recipes
+    selected_df = df.loc[recipe_order]
+    
+    # Find ingredients that have non-zero values in at least one selected recipe
+    used_ingredients = []
+    for ingredient in df.columns:
+        if (selected_df[ingredient] > 0).any():
+            used_ingredients.append(ingredient)
+    
+    print(f"  Ingredients with non-zero values: {len(used_ingredients)} of {len(df.columns)} total")
+    
+    # Order ingredients by sensory groups (only include used ingredients)
     ingredient_order = []
     ingredient_groups = {}
     sensory_group_order = ['Sweet', 'Dry', 'Rich', 'Light', 'Smooth', 'Harsh', 'Cooling']
     
     for group_name in sensory_group_order:
         for ingredient in sensory_groups[group_name]:
-            if ingredient in df.columns:
+            if ingredient in df.columns and ingredient in used_ingredients:
                 ingredient_order.append(ingredient)
                 ingredient_groups[ingredient] = group_name
     
-    # Add ungrouped ingredients at the end
+    # Add ungrouped ingredients at the end (only if used)
     for ingredient in sensory_groups['Ungrouped']:
-        if ingredient in df.columns:
+        if ingredient in df.columns and ingredient in used_ingredients:
             ingredient_order.append(ingredient)
             ingredient_groups[ingredient] = 'Ungrouped'
     
@@ -716,7 +718,7 @@ def generate_html_file(df, recipe_order, ingredient_order, recipe_groups, ingred
                         cell.textContent = '';
                     }} else {{
                         // Recipe not selected - show with reduced transparency
-                        cell.style.backgroundColor = getColor(value, 0.2);
+                        cell.style.backgroundColor = getColor(value, 0.1);
                         cell.textContent = '';
                     }}
                 }} else {{
