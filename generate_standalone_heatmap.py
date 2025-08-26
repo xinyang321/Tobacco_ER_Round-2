@@ -104,15 +104,24 @@ def organize_data(df, tobacco_groups, sensory_groups):
     print("\n📊 ORGANIZING DATA FOR HTML EXPORT")
     print("-" * 40)
     
-    # Order recipes by groups
-    recipe_order = []
+    # Order recipes by user-specified order
+    desired_order = [
+        "J1 Virginia Tobacco 5%",
+        "TOBACCO (VIRGINIA) 5% (+38% FL) E-400360",
+        "(ILLINOIS) TOBACCO VT 5% NFC) DDS00734",
+        "VIRGINIA TOBACCO 5% (DDS00451B)",
+        "CALIFORNIA TOBACCO 5% (E-400452)",
+        "AUTUMN TOBACCO 3% (E-400519)",
+        "SRI LANKA TOBACCO 5% (E-400451)",
+        "VERMONT TOBACCO 5% (E-400454)",
+        "Golden Tobacco 5% J1 (345-00124)",
+        "TOBACCO(AMERICAN) 5% (E-400469)"
+    ]
+    recipe_order = [r for r in desired_order if r in df.index]
     recipe_groups = {}
-    
     for group_name, recipes in tobacco_groups.items():
-        print(f"  {group_name}: {len(recipes)} recipes")
         for recipe in recipes:
-            if recipe in df.index:
-                recipe_order.append(recipe)
+            if recipe in recipe_order:
                 recipe_groups[recipe] = group_name
     
     # Filter ingredients to only include those used in selected recipes
